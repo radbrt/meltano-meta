@@ -5,6 +5,10 @@ import re
 import uuid
 import os
 import requests
+import subprocess
+import logging
+
+LOGGER = logging.getLogger(__name__)
 
 def find_element(name, data):
     for element in data:
@@ -205,12 +209,21 @@ def post_to_marquez(url, data):
 
 
 @click.command()
-@click.option('--environment', '-e', default='prod', help='environment to search in')
+@click.option('--environment', '-e', default=None, help='environment to search in')
 @click.option('--url', default='http://localhost:5000/api/v1/lineage', help='OpenLineage URL endpoint')
 @click.option('--publish', default=False, help='Publish to OpenLineage', is_flag=True)
-@click.option('--outfile', '-o', default='openlineage.log', help='Output file')
+@click.option('--outfile', '-o', default=None, help='Output file')
 def logparser(environment, url, publish, outfile):
-  
+
+  if not environment:
+    LOGGER.info("No environment provided, using default_environment from meltano.yml")
+    projectfile = yaml.parse(open("meltano.yml", "r"))
+    environment = projectfile["default_environment"]
+
+  if not os.path.exists(f".meltano/manifests/meltano-manifest.{environment}.json"):
+    LOGGER.info(f"Manifest file .meltano/manifests/meltano-manifest.{environment}.json not found, invoking `meltano compile`")
+    subprocess.run(["meltano", "compile"])
+    
   configs = get_configs(environment)
   for file in find_logfile():
     logs = parse_logs(file, configs)
@@ -222,9 +235,14 @@ def logparser(environment, url, publish, outfile):
       post_to_marquez(url, start_entry)
       post_to_marquez(url, end_entry)
 
-  with open(outfile, 'w') as f:
-    for start_entry, end_entry in openlineage_logs:
-        f.write(json.dumps(start_entry) + '\n')
-        f.write(json.dumps(end_entry) + '\n')
+  if outfile:
+    with open(outfile, 'w') as f:
+      for start_entry, end_entry in openlineage_logs:
+          f.write(json.dumps(start_entry) + '\n')
+          f.write(json.dumps(end_entry) + '\n')
 
+  if not outfile and not publish:
+    for start_entry, end_entry in openlineage_logs:
+      print(json.dumps(start_entry))
+      print(json.dumps(end_entry))
 
