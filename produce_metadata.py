@@ -187,31 +187,33 @@ def parse_logs(filepath, manifest_path):
 
 
 if __name__ == "__main__":
+   
+   print("Yay we be burning")
 
-  parser = argparse.ArgumentParser()
-  parser.add_argument("--logs", help="The Meltano logs file", default="data/meltano.log")
-  parser.add_argument("--manifest", help="The Meltano manifest file", default="data/manifest.json")
-  parser.add_argument("--output", help="The output file", default="output.json")
-  parser.add_argument("--print", help="Print the output to the console", default=False)
+  # parser = argparse.ArgumentParser()
+  # parser.add_argument("--logs", help="The Meltano logs file", default="data/meltano.log")
+  # parser.add_argument("--manifest", help="The Meltano manifest file", default="data/manifest.json")
+  # parser.add_argument("--output", help="The output file", default="output.json")
+  # parser.add_argument("--print", help="Print the output to the console", default=False)
 
-  args = parser.parse_args()
-  results = parse_logs(args.logs, args.manifest)
+  # args = parser.parse_args()
+  # results = parse_logs(args.logs, args.manifest)
 
-  if os.path.exists("openlinage_" + args.output):
-    os.remove("openlinage_" + args.output)
+  # if os.path.exists("openlinage_" + args.output):
+  #   os.remove("openlinage_" + args.output)
 
-  if os.path.exists("meltano_" + args.output):
-    os.remove("meltano_" + args.output)
+  # if os.path.exists("meltano_" + args.output):
+  #   os.remove("meltano_" + args.output)
 
 
-  openlineage_records = open("openlinage_" + args.output, "w")
-  meltano_summary = open("meltano_" + args.output, "w")
+  # openlineage_records = open("openlinage_" + args.output, "w")
+  # meltano_summary = open("meltano_" + args.output, "w")
 
-  for result in results:
-    meltano_summary.write(json.dumps(result) + '\n')
-    openlineage_start, openlineage_complete = emit_openlineage_from_summary(result)
-    openlineage_records.write(json.dumps(openlineage_start) + '\n')
-    openlineage_records.write(json.dumps(openlineage_complete) + '\n')
+  # for result in results:
+  #   meltano_summary.write(json.dumps(result) + '\n')
+  #   openlineage_start, openlineage_complete = emit_openlineage_from_summary(result)
+  #   openlineage_records.write(json.dumps(openlineage_start) + '\n')
+  #   openlineage_records.write(json.dumps(openlineage_complete) + '\n')
 
   # if args.print:
   #   print("******* START RECORD: *******")
