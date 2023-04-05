@@ -217,7 +217,7 @@ def logparser(environment, url, publish, outfile):
 
   if not environment:
     LOGGER.info("No environment provided, using default_environment from meltano.yml")
-    projectfile = yaml.parse(open("meltano.yml", "r"))
+    projectfile = yaml.load(open("meltano.yml", "r"), Loader=yaml.FullLoader)
     environment = projectfile["default_environment"]
 
   if not os.path.exists(f".meltano/manifests/meltano-manifest.{environment}.json"):
