@@ -1,9 +1,10 @@
-
+import click
+import yaml
 import json
-import uuid
-import argparse
-import os
 import re
+import uuid
+import os
+import requests
 
 def find_element(name, data):
     for element in data:
@@ -24,6 +25,20 @@ def get_values(name, data):
         values = parent_values
     
     return values
+
+def convert_dict_to_array(d):
+  for key, value in d.items():
+
+    if isinstance(value["type"], list):
+      value["type"] = value["type"][0]
+
+    item = {
+      "name": key,
+      "type": value["type"],
+      "description": value.get("description")
+    }
+    yield item
+
 
 
 def emit_openlineage_from_summary(run_summary):
@@ -57,24 +72,9 @@ def emit_openlineage_from_summary(run_summary):
   return start_record, end_record
 
 
-def convert_dict_to_array(d):
-  for key, value in d.items():
-
-    if isinstance(value["type"], list):
-      value["type"] = value["type"][0]
-
-    item = {
-      "name": key,
-      "type": value["type"],
-      "description": value.get("description")
-    }
-    yield item
-
-
-def parse_logs(filepath, manifest_path):
+def parse_logs(filepath, m):
 
   f = open(filepath, "r")
-  m = json.load(open(manifest_path, "r"))
 
   for line in f.readlines():
     j = json.loads(line)
@@ -164,59 +164,67 @@ def parse_logs(filepath, manifest_path):
       d["job"]["name"] = f"{d['producer_name']}-to-{d['consumer_name']}"
       yield d
 
-
   f.close()
-  # start_record = {
-  #                 "eventType": "START", 
-  #                 "eventTime": d["start_time"],
-  #                 "run": {
-  #                   "runId": d["run"]["runId"],
-  #                 },
-  #                 "inputs": d["inputs"],
-  #                 "outputs": d["outputs"]
-  #               }
 
-  # end_record = {
-  #                 "eventType": "COMPLETE",
-  #                 "eventTime": d["end_time"],
-  #                 "run": d["run"],
-  #                 "inputs": d["inputs"],
-  #                 "outputs": d["outputs"]
-  #               }
+
+def find_logfile():
+
+  y = yaml.load(open("logging.yaml", "r"), Loader=yaml.FullLoader)
+
+  for k, v in y["handlers"].items():
+    if "filename" in v.keys() and v["formatter"] == "json":
+      yield v["filename"]
 
 
 
-if __name__ == "__main__":
-   
-   print("Yay we be burning")
+def get_configs(environment=None):
+  if environment:
+    location = f".meltano/manifests/meltano-manifest.{environment}.json"
+  else:
+    location = ".meltano/manifests/meltano-manifest.json"
+  if not os.path.exists(location):
+    raise FileNotFoundError(f"Manifest file {location} not found")
 
-  # parser = argparse.ArgumentParser()
-  # parser.add_argument("--logs", help="The Meltano logs file", default="data/meltano.log")
-  # parser.add_argument("--manifest", help="The Meltano manifest file", default="data/manifest.json")
-  # parser.add_argument("--output", help="The output file", default="output.json")
-  # parser.add_argument("--print", help="Print the output to the console", default=False)
-
-  # args = parser.parse_args()
-  # results = parse_logs(args.logs, args.manifest)
-
-  # if os.path.exists("openlinage_" + args.output):
-  #   os.remove("openlinage_" + args.output)
-
-  # if os.path.exists("meltano_" + args.output):
-  #   os.remove("meltano_" + args.output)
+  m = json.load(open(location, "r"))
+  
+  return m
 
 
-  # openlineage_records = open("openlinage_" + args.output, "w")
-  # meltano_summary = open("meltano_" + args.output, "w")
+def post_to_marquez(url, data):
+  headers = {'Content-type': 'application/json'}
 
-  # for result in results:
-  #   meltano_summary.write(json.dumps(result) + '\n')
-  #   openlineage_start, openlineage_complete = emit_openlineage_from_summary(result)
-  #   openlineage_records.write(json.dumps(openlineage_start) + '\n')
-  #   openlineage_records.write(json.dumps(openlineage_complete) + '\n')
+  # Add bearer authentication if token is provided
+  if os.getenv("MARQUEZ_API_KEY"):
+    auth_token = os.getenv("MARQUEZ_API_KEY")
+    headers["Authorization"] = f"Bearer { auth_token }"
 
-  # if args.print:
-  #   print("******* START RECORD: *******")
-  #   print(json.dumps(start_record, indent=2))
-  #   print("******* COMPLETE RECORD: *******")
-  #   print(json.dumps(complete_record, indent=2))
+  r = requests.post(url, json=data, headers=headers)
+
+  if not r.ok:
+    raise Exception(f"Error posting to OpenLineage: {r.status_code}, {r.text}")
+
+
+@click.command()
+@click.option('--environment', '-e', default='prod', help='environment to search in')
+@click.option('--url', default='http://localhost:5000/api/v1/lineage', help='OpenLineage URL endpoint')
+@click.option('--publish', default=False, help='Publish to OpenLineage', is_flag=True)
+@click.option('--outfile', '-o', default='openlineage.log', help='Output file')
+def logparser(environment, url, publish, outfile):
+  
+  configs = get_configs(environment)
+  for file in find_logfile():
+    logs = parse_logs(file, configs)
+  
+  openlineage_logs = [emit_openlineage_from_summary(summary) for summary in logs]
+
+  if publish:
+    for start_entry, end_entry in openlineage_logs:
+      post_to_marquez(url, start_entry)
+      post_to_marquez(url, end_entry)
+
+  with open(outfile, 'w') as f:
+    for start_entry, end_entry in openlineage_logs:
+        f.write(json.dumps(start_entry) + '\n')
+        f.write(json.dumps(end_entry) + '\n')
+
+
