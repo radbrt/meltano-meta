@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "meltano-meta"
+version = "0.0.1"
+description = "`meltano-meta` is a parser for Meltano logs"
+authors = ["Henning Holgersen"]
+license = "Apache 2.0"
+packages = [
+    { include = "cli" }
+]
+
+
+[tool.poetry.dependencies]
+python = "<3.12,>=3.7"
+PyYAML = "^6.0.0"
+click = "^8.1.3"
+typer = "^0.6.1"
+requests = "^2.26.0"
+
+[tool.poetry.dev-dependencies]
+black = "^22.3.0"
+isort = "^5.10.1"
+flake8 = "^3.9.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.8"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+meltano-lineage = 'cli.commands:logparser'
