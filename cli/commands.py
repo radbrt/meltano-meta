@@ -222,7 +222,10 @@ def logparser(environment, url, publish, outfile):
 
   if not os.path.exists(f".meltano/manifests/meltano-manifest.{environment}.json"):
     LOGGER.info(f"Manifest file .meltano/manifests/meltano-manifest.{environment}.json not found, invoking `meltano compile`")
-    subprocess.run(["meltano", "compile"])
+    compile_result = subprocess.run(["meltano", "compile"])
+    if not compile_result.returncode == 0:
+      raise Exception(f"Error invoking meltano compile: {compile_result.returncode}")
+
     
   configs = get_configs(environment)
   for file in find_logfile():
