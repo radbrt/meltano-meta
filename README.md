@@ -1,57 +1,54 @@
 # OpenLineage parser for Meltano
 
-This is a thinking-out-loud kind of project, the few lines of code here are meant as a starting point to trigger some thoughts, not a proposed solution.
+This is a simple CLI for parsing meltano logs, subject to a lot of breaking changes and improvements.
 
 ## The goal
 
-Meltano loads data from sources to destination, but there is currently little integration with lineage. It should, however, be possible to output some open-lineage type metadata.
+Meltano loads data from sources to destination, but there is currently little integration with lineage. It should, however, be possible to output some open-lineage type metadata. This cli tool parses key files in a Meltano project, and creates openlineage-compliant records. It can optionally post these records to a Marquez API endpoint.
 
-## What is possible today
+## What it currently does
 
-Based on what is available today, we are able to extract relevant information from two places:
-  - the meltano run logs
-  - the manifest (or directly from meltano.yml)
+Currently, the tool finds the following information:
+- the name of the tap and target
+- the name of the stream
+- The start and end time for the run
+- The schema (of the source at least)
+- run metrics (number or rows etc) if the tap/target is SDK-based
+- Run result (success/error)
+- Tap/Target config such as host
 
-The low-hanging fruit available regardless of tap and target, are the following:
-  - run start time
-  - run end time
-  - outcome (success/error)
-  - name of source and destination (meltano reference name, but not a technical reference to the source)
-  - names and schema of the streams
+## What might be possible
 
-With SDK-based taps/targets, there are also metrics logged, so that we for each run can add number of rows processed etc.
+Perhaps the biggest improvement of this tool would be to automatically generate URIs of the source/target locations. Such URIs typically look something like `snowflake://xy12345.north-europe.azure/db-name/schema-name/table-name` or `sftp://ftp.example.com/data-folder/file1.csv`. It is not possible to reliably parse data like that from the config, so the practical solution is probably to encourage some standardization of log messages so that the tap/target can emit these URIs themselves, to be picked up by the log parser.
 
-## Incremental improvements
+It might also be possible to provide exact column name mapping. This would have to be a two-fold process:
+- Mappers can create new columns, and we would need to parse these in order to calculate new columns
+- targets can change the names of columns, typically in order to comply with conventions or requirements in the target system
 
-Many of the taps/targets have commonalities in their configuration, and with some custom coding we may be able to create generic references to source/target data. This will, of course, always be approximations, but for databases in particular it is possible to construct references following the openlineage nomenclature like `mysql://db.foo.com:6543/metrics.orders`. For a number of taps/targets, like APIs and some file locations, this will be inexact at best.
+The log parser should be able to parse mappings, but in order to catch column renamings in the target, we would require logging standards.
 
 
 ## Improvements to meltano and the SDK
 
-Even when writing logs as JSON, the format is less than ideal. Especially the "metrics" is basically a json as text inside a longer text string. Not really a problem, but...
+It is obvious that a good lineage parser requires good logging and good standardization. Some ideas so far:
+- Meltano could generate even clearer messages for when a run starts and when it ends
+- We need to agree on some standard (optional) log fields that can be parsed for lineage purposes
+- Perhaps dedicated "lineage log lines" could be useful
 
-The logs can also be more streamlined to fit with the open-lineage specification.
+## How to use the CLI
 
-Separate json-lines for "started", "completed" and "error" should be fairly low-hanging fruit and would make parsing a lot more predictable. In general, custom log-lines for lineage/observability should be doable.
+When standing inside a meltano project, run `meltano-lineage` to parse the logs and generate summary output. By default this output will be printed to stdout, but it can optionally be written directly to file by passing a filename to the `--output` or `-o` option, or it can publish lineage directly to a Marquez endpoint by using the `--publish` flag.
 
-I don't know how difficult it would be to arrange a separate function in meltano for writing directly to a marquez endpoint, but I assume it is possible for a target to be marquez-enabled.
-
-
-## What the script does
-
-The `data` folder contains two log-files from meltano, as well as a manifest file. These are fairly randomly assembled, and the output demonstrates that.
-
-Basically, `produce_metadata.py` parses the manifest and a log file, and assembles one "START" and one "COMPLETED" record which by default is written to `openlineage.json`. This output should be fairly compliant with the openlineage standard.
-
-The entire "config" field of taps/targets are appended to each stream (`input`/`output` in openlineage terminology), including config from parent taps if inheritance is used. Beware if there are hardcoded passwords etc in the config. Config defined as env variables are not included. Because the taps/target config is defined by the different taps/targets, we aren't parsing this - just sending it with. A possible improvement could be to grap the "root" tap/target used, which makes post-processing to figure out absolute references to the data possible.
-
-The script can be run without arguments (just `python produce_metadata.py`), but it accepts the following arguments:
-  - `--logs`: path to the log file to parse. Default `data/meltano.log`
-  - `--manifest`: path to the manifest file to parse. Default `data/manifest.json`
-  - `--output`: path to metadata file to be written. Default `openlineage.json`
-  - `--print`: option to pretty-print the metadata records to the console. Default false.
+The script can be run without arguments (just `meltano-lineage`), but it accepts the following arguments:
+  - `--environment`: Which meltano environment to use. Defaults to the project default.
+  - `--oufile`: path to metadata file to be written. Default `openlineage.json`
+  - `--publish`: flag to post the records to a Marquez endpoint, specified by the `--url` option.
+  - `--url`: A Marquez endpoint to post records to. Default `http://localhost:5000/api/v1/lineage`. Not used without the `--publish` flag.
 
 
+## Requirements
+
+In order for the parser to work, you need a Meltano project with a `logging.yaml` file that specifies logging to file with JSON formatting and at least INFO level logging. Because the tool parses logs, `meltano run` must have been invoked first.
 
 
 
