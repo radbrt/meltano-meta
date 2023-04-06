@@ -127,7 +127,7 @@ def parse_logs(filepath, m):
       metric_name = parsed_json["metric"]
       metric_value = parsed_json["value"]
       if metric_type in ["timer", "counter", "sync_duration"]:
-        current_metric = d["run"]["metrics"].get(metric_name) or 0
+        current_metric = d["run"]["facets"]["metrics"].get(metric_name) or 0
         d["run"]["facets"]["metrics"][metric_name] = current_metric + metric_value
 
     if j.get("event").startswith('{\"type\": \"SCHEMA\"'):
