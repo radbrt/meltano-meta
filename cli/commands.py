@@ -132,7 +132,6 @@ def parse_logs(filepath, m):
         d["run"]["facets"]["metrics"][metric_name] = current_metric + metric_value
 
     if j.get("event") and "MELTANO-META-LOGGER" in j.get("event"):
-      print("YAY WE FOUND IT")
       json_part = re.search(r'\{.*\}', j.get("event") ).group(0)
 
       # Parse the JSON part into a Python dictionary
@@ -151,6 +150,8 @@ def parse_logs(filepath, m):
             "config": None
           }
         }
+        output["facets"]["schema"]["_producer"] = "meltano"
+        output["facets"]["schema"]["_schemaURL"] = uri
         d["outputs"].append(output)
 
       if j.get("producer") and parsed_json.get("schema"):
@@ -166,6 +167,8 @@ def parse_logs(filepath, m):
             "config": None
           }
         }
+        input["facets"]["schema"]["_producer"] = "meltano"
+        input["facets"]["schema"]["_schemaURL"] = uri
         d["inputs"].append(input)
 
     if j.get("event").startswith('{\"type\": \"SCHEMA\"'):
