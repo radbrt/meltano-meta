@@ -93,7 +93,9 @@ def parse_logs(filepath, m):
           "outputs": [],
           "run": {
             "runId": str(uuid.uuid4()),
+            "facets": {
             "metrics": {}
+            }
           },
           "job": {
           "namespace": None,
@@ -126,7 +128,7 @@ def parse_logs(filepath, m):
       metric_value = parsed_json["value"]
       if metric_type in ["timer", "counter", "sync_duration"]:
         current_metric = d["run"]["metrics"].get(metric_name) or 0
-        d["run"]["metrics"][metric_name] = current_metric + metric_value
+        d["run"]["facets"]["metrics"][metric_name] = current_metric + metric_value
 
     if j.get("event").startswith('{\"type\": \"SCHEMA\"'):
       
