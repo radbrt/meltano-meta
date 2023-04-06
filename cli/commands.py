@@ -131,6 +131,41 @@ def parse_logs(filepath, m):
         current_metric = d["run"]["facets"]["metrics"].get(metric_name) or 0
         d["run"]["facets"]["metrics"][metric_name] = current_metric + metric_value
 
+    if j.get("event") and "'MELTANO-META-LOGGER'" in j.get("event"):
+      start_pos = j["event"].find("{") + 1
+      json_string = j["event"][start_pos:]
+      parsed_json = json.loads(json_string)
+
+      if j.get("consumer"):
+        uri = parsed_json["uri"]
+        schema = list(convert_dict_to_array(parsed_json["schema"]["properties"]))
+        output = {
+          "namespace": uri,
+          "name": parsed_json["table_name"],
+          "facets": {
+            "schema": {
+              "fields": schema
+            },
+            "config": None
+          }
+        }
+        d["outputs"].append(output)
+
+      if j.get("producer"):
+        uri = parsed_json["uri"]
+        schema = list(convert_dict_to_array(parsed_json["schema"]["properties"]))
+        input = {
+          "namespace": uri,
+          "name": parsed_json["table_name"],
+          "facets": {
+            "schema": {
+              "fields": schema
+            },
+            "config": None
+          }
+        }
+        d["inputs"].append(input)
+
     if j.get("event").startswith('{\"type\": \"SCHEMA\"'):
       
       name = j["string_id"]
