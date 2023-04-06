@@ -27,3 +27,4 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 meltano-lineage = 'cli.commands:logparser'
+meltano-parsefile = 'cli.commands:parsefile'

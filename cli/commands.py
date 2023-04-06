@@ -131,12 +131,14 @@ def parse_logs(filepath, m):
         current_metric = d["run"]["facets"]["metrics"].get(metric_name) or 0
         d["run"]["facets"]["metrics"][metric_name] = current_metric + metric_value
 
-    if j.get("event") and "'MELTANO-META-LOGGER'" in j.get("event"):
-      start_pos = j["event"].find("{") + 1
-      json_string = j["event"][start_pos:]
-      parsed_json = json.loads(json_string)
+    if j.get("event") and "MELTANO-META-LOGGER" in j.get("event"):
+      print("YAY WE FOUND IT")
+      json_part = re.search(r'\{.*\}', j.get("event") ).group(0)
 
-      if j.get("consumer"):
+      # Parse the JSON part into a Python dictionary
+      parsed_json = json.loads(json_part)
+
+      if j.get("consumer") and parsed_json.get("schema"):
         uri = parsed_json["uri"]
         schema = list(convert_dict_to_array(parsed_json["schema"]["properties"]))
         output = {
@@ -151,7 +153,7 @@ def parse_logs(filepath, m):
         }
         d["outputs"].append(output)
 
-      if j.get("producer"):
+      if j.get("producer") and parsed_json.get("schema"):
         uri = parsed_json["uri"]
         schema = list(convert_dict_to_array(parsed_json["schema"]["properties"]))
         input = {
@@ -287,3 +289,38 @@ def logparser(environment, url, publish, outfile):
       print(json.dumps(start_entry))
       print(json.dumps(end_entry))
 
+
+
+
+def get_configs_from_file(location):
+  if not os.path.exists(location):
+    raise FileNotFoundError(f"Manifest file {location} not found")
+
+  m = json.load(open(location, "r"))
+  return m
+
+
+
+@click.command()
+@click.option('--file', '-f', default=None, help='Logfile to parse')
+@click.option('--manifest', '-m', default=None, help='Manifest file to use')
+def parsefile(file, manifest):
+  if not file:
+    raise Exception("No file provided")
+
+  if not os.path.exists(file):
+    raise FileNotFoundError(f"File {file} not found")
+
+  if not manifest:
+    raise Exception("No manifest file provided")
+  
+  if not os.path.exists(manifest):
+    raise FileNotFoundError(f"Manifest file {manifest} not found")
+
+  configs = get_configs_from_file(manifest)
+  logs = parse_logs(file, configs)
+  openlineage_logs = [emit_openlineage_from_summary(summary) for summary in logs]
+
+  for start_entry, end_entry in openlineage_logs:
+    print(json.dumps(start_entry))
+    print(json.dumps(end_entry))
