@@ -80,10 +80,10 @@ def parse_logs(filepath, m):
 
   f = open(filepath, "r")
 
-  for line in f.readlines():
+  for i, line in enumerate(f.readlines()):
     j = json.loads(line)
 
-    if j.get("event") and re.match(r"Environment (.*) is active", j["event"]):
+    if (j.get("event") and re.match(r"Environment (.*) is active", j["event"])) or i==0:
         d = {
           "producer": "https://meltano.com",
           "producer_name": None, 
