@@ -7,6 +7,7 @@ import os
 import requests
 import subprocess
 import logging
+import hashlib
 
 LOGGER = logging.getLogger(__name__)
 
@@ -92,7 +93,7 @@ def parse_logs(filepath, m):
           "inputs": [],
           "outputs": [],
           "run": {
-            "runId": str(uuid.uuid4()),
+            "runId": hashlib.sha256(str(j.get("event")+j.get("timestamp")).encode()).hexdigest(),
             "facets": {
             "metrics": {}
             }
