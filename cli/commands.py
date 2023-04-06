@@ -108,7 +108,7 @@ def parse_logs(filepath, m):
     if j.get("consumer"):
       d["consumer_name"] = j["string_id"]
     
-    if j.get("timestamp") and not d["start_time"]:
+    if j.get("timestamp") and not d.get("start_time"):
       d["start_time"] = j["timestamp"]
     if j.get("timestamp"):
       d["end_time"] = j["timestamp"]
@@ -226,7 +226,7 @@ def logparser(environment, url, publish, outfile):
     if not compile_result.returncode == 0:
       raise Exception(f"Error invoking meltano compile: {compile_result.returncode}")
 
-    
+
   configs = get_configs(environment)
   for file in find_logfile():
     logs = parse_logs(file, configs)
