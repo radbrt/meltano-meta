@@ -141,8 +141,8 @@ def parse_logs(filepath, m):
         uri = parsed_json["uri"]
         schema = list(convert_dict_to_array(parsed_json["schema"]["properties"]))
         output = {
-          "namespace": uri,
-          "name": parsed_json["table_name"],
+          "namespace": "meltano",
+          "name": uri,
           "facets": {
             "schema": {
               "fields": schema
@@ -158,7 +158,7 @@ def parse_logs(filepath, m):
         uri = parsed_json["uri"]
         schema = list(convert_dict_to_array(parsed_json["schema"]["properties"]))
         input = {
-          "namespace": uri,
+          "namespace": "meltano",
           "name": parsed_json["table_name"],
           "facets": {
             "schema": {
