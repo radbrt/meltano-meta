@@ -1,12 +1,13 @@
-import click
-import yaml
-import json
-import re
-import os
-import requests
-import subprocess
-import logging
 import hashlib
+import json
+import logging
+import os
+import re
+import subprocess
+
+import click
+import requests
+import yaml
 
 LOGGER = logging.getLogger(__name__)
 
