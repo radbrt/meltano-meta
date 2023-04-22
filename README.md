@@ -49,6 +49,3 @@ The script can be run without arguments (just `meltano-lineage`), but it accepts
 ## Requirements
 
 In order for the parser to work, you need a Meltano project with a `logging.yaml` file that specifies logging to file with JSON formatting and at least INFO level logging. Because the tool parses logs, `meltano run` must have been invoked first.
-
-
-
