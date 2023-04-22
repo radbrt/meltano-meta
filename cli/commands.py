@@ -108,6 +108,7 @@ def parse_logs(filepath, m):
 
     if j.get("producer"):
       d["producer_name"] = j["string_id"]
+      
     if j.get("consumer"):
       d["consumer_name"] = j["string_id"]
     
